@@ -1,0 +1,84 @@
+use std::collections::BinaryHeap;
+use std::cmp::Reverse;
+
+#[derive(Debug)]
+struct Order {
+    price: u64,
+    quantity: u64,
+    order_type: OrderType,
+}
+
+#[derive(Debug)]
+enum OrderType {
+    Buy,
+    Sell,
+}
+
+impl Order {
+    fn new(price: u64, quantity: u64, order_type: OrderType) -> Self {
+        Self {
+            price,
+            quantity,
+            order_type,
+        }
+    }
+}
+
+struct OrderBook {
+    buy_orders: BinaryHeap<Order>,
+    sell_orders: BinaryHeap<Reverse<Order>>,
+}
+
+impl OrderBook {
+    fn new() -> Self {
+        Self {
+            buy_orders: BinaryHeap::new(),
+            sell_orders: BinaryHeap::new(),
+        }
+    }
+
+    fn add_order(&mut self, order: Order) {
+        match order.order_type {
+            OrderType::Buy => self.buy_orders.push(order),
+            OrderType::Sell => self.sell_orders.push(Reverse(order)),
+        }
+    }
+
+    fn match_orders(&mut self) {
+        while let (Some(mut buy_order), Some(Reverse(mut sell_order))) =
+            (self.buy_orders.peek_mut(), self.sell_orders.peek_mut())
+        {
+            if buy_order.price >= sell_order.price {
+                let trade_quantity = buy_order.quantity.min(sell_order.quantity);
+
+                buy_order.quantity -= trade_quantity;
+                sell_order.quantity -= trade_quantity;
+
+                println!(
+                    "Matched: Buy {} @ {} with Sell {} @ {}",
+                    trade_quantity, buy_order.price, trade_quantity, sell_order.price
+                );
+
+                if buy_order.quantity == 0 {
+                    self.buy_orders.pop();
+                }
+
+                if sell_order.quantity == 0 {
+                    self.sell_orders.pop();
+                }
+            } else {
+                break;
+            }
+        }
+    }
+}
+
+fn main() {
+    let mut order_book = OrderBook::new();
+    order_book.add_order(Order::new(100, 10, OrderType::Buy));
+    order_book.add_order(Order::new(95, 5, OrderType::Sell));
+    order_book.add_order(Order::new(102, 7, OrderType::Buy));
+    order_book.add_order(Order::new(97, 3, OrderType::Sell));
+
+    order_book.match_orders();
+}
